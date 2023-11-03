@@ -1,41 +1,214 @@
 package org.isky;
 
+import net.sf.json.JSONObject;
 import org.apache.poi.hssf.usermodel.*;
-import org.apache.poi.ss.usermodel.FillPatternType;
-import org.apache.poi.ss.usermodel.HorizontalAlignment;
-import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.isky.domain.DictData;
 import org.isky.domain.FileInfo;
+import org.isky.util.DateUtils;
 import org.isky.util.PrintFileUitls;
 import org.isky.util.StringUtils;
 import org.isky.util.XlsTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 public class Main {
 
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) {
-        Map<String, List<FileInfo>> m = getFileInfo("D:\\chuanjian\\10.31", null);
-        for (Map.Entry<String,List<FileInfo>> entry : m.entrySet()) {
-            System.out.println(entry.getKey());
-            List<FileInfo> l = entry.getValue();
-            for (FileInfo info:l){
-                System.out.println(info.getFileName());
-                System.out.println(info.getMaterial());
-            }
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+        String folderDate = null;
+        try {
+            folderDate = DateUtils.getPdfDateFold(simpleDateFormat.format(new Date()));
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
         }
+        String pdfFileFolder = "F:\\qiang" + File.separator + folderDate;
+        // 获取解析文件夹数据
+        Map<String, List<FileInfo>> m = getFileInfo(pdfFileFolder, null);
+        List<FileInfo> allList = new ArrayList<>();
+        for (Map.Entry<String, List<FileInfo>> entry : m.entrySet()) {
+            allList.addAll(entry.getValue());
+        }
+        // 获取分析后的数据
+        Map<String, Long> data = getData(allList);
+        //生成EXCEL
+        createXls(data, folderDate);
+    }
+
+    public static void createXls(Map<String, Long> data, String folderDate) {
+        String path = "D:\\世纪开元" + File.separator;
+        // 纸张材质对应信息
+        Map<String, String> cellMap = XlsTools.getXlsCellMap();
+
+        List<DictData> dataList = new ArrayList<>();
+        dataList.add(new DictData("4C+0", "0"));
+        dataList.add(new DictData("4C+1", "1"));
+        dataList.add(new DictData("4C+4", "2"));
+        dataList.add(new DictData("1C+0", "3"));
+        dataList.add(new DictData("1C+1", "4"));
+        try {
+            HSSFWorkbook wb = new HSSFWorkbook();
+            //在Workbook中，创建一个sheet，对应Excel中的工作薄（sheet）
+            HSSFSheet sheet = wb.createSheet(folderDate);
+            //创建表头样式
+            HSSFCellStyle headStyle = wb.createCellStyle();
+            headStyle.setAlignment(HorizontalAlignment.CENTER);
+            headStyle.setFillForegroundColor(IndexedColors.YELLOW.index);
+            headStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            //创建单元格，并设置值表头 设置表头居中
+            HSSFCellStyle style = wb.createCellStyle();
+            //创建一个居中格式
+            style.setAlignment(HorizontalAlignment.CENTER);
+            // 填充工作表
+            // 定义存放英文字段名和中文字段名的数组
+            //在sheet中添加表头第0行,注意老版本poi对Excel的行数列数有限制short
+            HSSFRow row = sheet.createRow((int) 0);
+
+            CellRangeAddress region = new CellRangeAddress(0, 0, 1, 2);
+            CellRangeAddress region1 = new CellRangeAddress(0, 0, 3, 4);
+            CellRangeAddress region2 = new CellRangeAddress(0, 0, 5, 6);
+            CellRangeAddress region3 = new CellRangeAddress(0, 0, 7, 8);
+            CellRangeAddress region4 = new CellRangeAddress(0, 0, 9, 10);
+            sheet.addMergedRegion(region);
+            sheet.addMergedRegion(region1);
+            sheet.addMergedRegion(region2);
+            sheet.addMergedRegion(region3);
+            sheet.addMergedRegion(region4);
+
+            // 填充表头
+            for (int i = 0; i < headerTitles.length; i++) {
+                if (i == 0) {
+                    HSSFCell cell = row.createCell(i);
+                    cell.setCellValue(headerTitles[i]);
+                    cell.setCellStyle(headStyle);
+                } else {
+                    HSSFCell cell = row.createCell(i * 2 - 1);
+                    cell.setCellValue(headerTitles[i]);
+                    cell.setCellStyle(headStyle);
+                }
+            }
+            int index = 0;
+            for (String key : cellMap.keySet()) {
+                row = sheet.createRow(index + 1);
+                String material = cellMap.get(key);
+                HSSFCell firstCell = row.createCell(0);
+                firstCell.setCellValue(material);
+                firstCell.setCellStyle(style);
+
+                for (int j = 1; j <= dataList.size() * 2; j++) {
+                    HSSFCell cell = row.createCell(j);
+                    cell.setCellValue(0);
+                    cell.setCellStyle(style);
+                }
+                int allSum = 0;
+                int cellIndex = 0;
+                for (Map.Entry<String, Long> entry : data.entrySet()) {
+                    String k = entry.getKey();
+                    System.out.println("--------------");
+                    System.out.println(k);
+                    Long v = entry.getValue();
+                    System.out.println(v);
+                    String[] karr = k.split("_");
+                    String pageType = "0";
+                    if (karr.length == 2) {
+                        pageType = karr[1];
+                    }
+                    String fieldValue = String.valueOf(v);
+                    allSum += v;
+                    int cellNum = 0;
+                    int ysCellNum = 0;
+                    long ysVal = 0;
+                    if (cellIndex == 0) {
+                        cellNum = cellIndex + 1;
+                        // 印数
+                        ysCellNum = cellIndex + 2;
+                        ysVal = v * 4;
+                    } else {
+                        int paperType = Integer.parseInt(pageType);
+                        cellNum = (paperType + 1) * 2 - 1;
+                        ysCellNum = (paperType + 1) * 2;
+                        switch (paperType) {
+                            case 0:
+                                ysVal = v * 4;
+                                break;
+                            case 1:
+                                ysVal = v * 5;
+                                break;
+                            case 2:
+                                ysVal = v * 8;
+                                break;
+                            case 3:
+                                ysVal = v;
+                                break;
+                            case 4:
+                                ysVal = v * 2;
+                                break;
+                        }
+                    }
+                    HSSFCell cell = row.createCell(cellNum);
+                    cell.setCellStyle(style);
+                    cell.setCellValue(fieldValue);
+
+                    //印数
+                    HSSFCell ysCell = row.createCell(ysCellNum);
+                    ysCell.setCellStyle(style);
+                    ysCell.setCellValue(ysVal);
+                    cellIndex++;
+                }
+                HSSFCell endCell = row.createCell(dataList.size() * 2 + 1);
+                endCell.setCellStyle(style);
+                endCell.setCellValue(allSum);
+                index++;
+            }
+
+
+            // 新建一输出文件流
+            FileOutputStream out = new FileOutputStream(path + folderDate + ".xls");
+            // 把相应的Excel工作蒲存盘
+            wb.write(out);
+            // 操作结束 关闭文件
+            out.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Map<String, Long> getData(List<FileInfo> l) {
+        Map<String, Long> prodMap = l.stream().collect(Collectors.groupingBy(x -> x.getMaterial() + "_" + x.getPaperType(), Collectors.summingLong(x -> x.getPaper() * x.getCopies())));
+        return prodMap;
     }
 
     /**
      * 数据分析
+     *
+     * @param m
+     * @return
+     */
+    public static Map<String, Map<String, Long>> getData(Map<String, List<FileInfo>> m) {
+        Map<String, Map<String, Long>> result = new HashMap<>();
+        for (Map.Entry<String, List<FileInfo>> entry : m.entrySet()) {
+//            System.out.println("key:" + entry.getKey());
+            String key = entry.getKey();
+            List<FileInfo> l = entry.getValue();
+            Map<String, Long> prodMap = l.stream().collect(Collectors.groupingBy(x -> x.getMaterial() + "_" + x.getPaperType(), Collectors.summingLong(x -> x.getPaper() * x.getCopies())));
+            result.put(key, prodMap);
+        }
+        return result;
+    }
+
+    /**
+     * 数据分析
+     *
      * @param fileFolder
      * @param fileDate
      * @return
@@ -64,9 +237,7 @@ public class Main {
                 if (fileFolder.equals(f)) {
                     continue;
                 }
-                File thisFile = new File(f);
-                String key = thisFile.getName();
-                System.out.println(f);
+                String key = PrintFileUitls.getLevel3Name(f);
                 // 获取文件夹下的所有文件
                 List<File> files = PrintFileUitls.getPdfFiles(f);
 
@@ -132,7 +303,14 @@ public class Main {
                     info.setMaterial(pdfMaterial);
                     fileInfos.add(info);
                 }
-                m.put(key, fileInfos);
+                m.merge(key, fileInfos, new BiFunction<List<FileInfo>, List<FileInfo>, List<FileInfo>>() {
+                    @Override
+                    public List<FileInfo> apply(List<FileInfo> fileInfos, List<FileInfo> fileInfos2) {
+                        List<FileInfo> result = new ArrayList<>(fileInfos);
+                        result.addAll(fileInfos2);
+                        return result;
+                    }
+                });
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -140,139 +318,7 @@ public class Main {
         return m;
     }
 
-    private static final String[] headerTitles= {"纸张", "4C+0C", "4C+1C", "4C+4C", "1C+1C", "1C+0", "合计"};
-
-    public void export(FileInfo fileInfo) {
-        //定义导出的excel名字
-        String excelName = "纸张统计" + fileInfo.getFileDate();
-        // 纸张材质对应信息
-        Map<String, String> cellMap = XlsTools.getXlsCellMap();
-        // 获取纸张类型（字典表信息）
-//        SysDictData dictData = new SysDictData();
-//        dictData.setDictType("dict_paper_type");
-//        List<SysDictData> dictDataList = dictDataService.selectDictDataList(dictData);
-        // 设置默认文件名为当前时间：年月日时分秒
-        if (excelName == null || excelName == "") {
-            excelName = new SimpleDateFormat("yyyyMMddhhmmss").format(new Date()).toString();
-        }
-
-        try {
-            //创建一个WorkBook,对应一个Excel文件
-            HSSFWorkbook wb = new HSSFWorkbook();
-            //在Workbook中，创建一个sheet，对应Excel中的工作薄（sheet）
-            HSSFSheet sheet = wb.createSheet(excelName);
-            //创建表头样式
-            HSSFCellStyle headStyle= wb.createCellStyle();
-            headStyle.setAlignment(HorizontalAlignment.CENTER);
-            headStyle.setFillForegroundColor(IndexedColors.YELLOW.index);
-            headStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            //创建单元格，并设置值表头 设置表头居中
-            HSSFCellStyle style = wb.createCellStyle();
-            //创建一个居中格式
-            style.setAlignment(HorizontalAlignment.CENTER);
-            // 填充工作表
-            // 定义存放英文字段名和中文字段名的数组
-            //在sheet中添加表头第0行,注意老版本poi对Excel的行数列数有限制short
-            HSSFRow row = sheet.createRow((int) 0);
-
-            CellRangeAddress region = new CellRangeAddress(0, 0, 1, 2);
-            CellRangeAddress region1 = new CellRangeAddress(0, 0, 3, 4);
-            CellRangeAddress region2 = new CellRangeAddress(0, 0, 5, 6);
-            CellRangeAddress region3 = new CellRangeAddress(0, 0, 7, 8);
-            CellRangeAddress region4 = new CellRangeAddress(0, 0, 9, 10);
-            sheet.addMergedRegion(region);
-            sheet.addMergedRegion(region1);
-            sheet.addMergedRegion(region2);
-            sheet.addMergedRegion(region3);
-            sheet.addMergedRegion(region4);
+    private static final String[] headerTitles = {"纸张", "4C+0C", "4C+1C", "4C+4C", "1C+1C", "1C+0", "合计"};
 
 
-            // 填充表头
-            for (int i = 0; i < headerTitles.length; i++) {
-                if (i == 0) {
-                    HSSFCell cell = row.createCell(i);
-                    cell.setCellValue(headerTitles[i]);
-                    cell.setCellStyle(headStyle);
-                } else {
-                    HSSFCell cell = row.createCell(i * 2 - 1);
-                    cell.setCellValue(headerTitles[i]);
-                    cell.setCellStyle(headStyle);
-                }
-            }
-            int index = 0;
-            // 填充内容
-            for (String key : cellMap.keySet()) {
-                row = sheet.createRow(index + 1);
-                String material = cellMap.get(key);
-                HSSFCell firstCell = row.createCell(0);
-                firstCell.setCellValue(material);
-                firstCell.setCellStyle(style);
-                List<BetFileStatistics> betFileStatistics = betFileInfoService.selectBetFileStatistics(betFileInfo);
-
-                for (int j = 1; j <= dictDataList.size() * 2; j++) {
-                    HSSFCell cell = row.createCell(j);
-                    cell.setCellValue(0);
-                    cell.setCellStyle(style);
-                }
-                int allSum = 0;
-                int cellIndex = 0;
-                for (BetFileStatistics statistics : betFileStatistics) {
-                    String fieldValue = String.valueOf(statistics.getSumPaper());
-                    allSum += statistics.getSumPaper();
-                    int cellNum = 0;
-                    int ysCellNum = 0;
-                    long ysVal = 0;
-                    if (cellIndex == 0) {
-                        cellNum = cellIndex + 1;
-                        // 印数
-                        ysCellNum = cellIndex + 2;
-                        ysVal = statistics.getSumPaper() * 4;
-                    } else {
-                        int paperType = Integer.parseInt(statistics.getPaperType());
-                        cellNum = (paperType + 1) * 2 - 1;
-                        ysCellNum = (paperType + 1) * 2;
-                        switch (paperType) {
-                            case 0:
-                                ysVal = statistics.getSumPaper() * 4;
-                                break;
-                            case 1:
-                                ysVal = statistics.getSumPaper() * 5;
-                                break;
-                            case 2:
-                                ysVal = statistics.getSumPaper() * 8;
-                                break;
-                            case 3:
-                                ysVal = statistics.getSumPaper() * 1;
-                                break;
-                            case 4:
-                                ysVal = statistics.getSumPaper() * 2;
-                                break;
-                        }
-                    }
-                    HSSFCell cell = row.createCell(cellNum);
-                    cell.setCellStyle(style);
-                    cell.setCellValue(fieldValue);
-
-                    //印数
-                    HSSFCell ysCell = row.createCell(ysCellNum);
-                    ysCell.setCellStyle(style);
-                    ysCell.setCellValue(ysVal);
-                    cellIndex++;
-                }
-                HSSFCell endCell = row.createCell(dictDataList.size() * 2 + 1);
-                endCell.setCellStyle(style);
-                endCell.setCellValue(allSum);
-                index++;
-            }
-            //将文件输出
-            OutputStream ouputStream = response.getOutputStream();
-            wb.write(ouputStream);
-            ouputStream.flush();
-            ouputStream.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-            logger.info("导出Excel失败！");
-            logger.error(e.getMessage());
-        }
-    }
 }

@@ -5,6 +5,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -338,6 +340,12 @@ public class PrintFileUitls {
             }
         }
 
+        return result;
+    }
+
+    public static String getLevel3Name(String fileName){
+        Path path = Paths.get(fileName);
+        String result = path.getName(2).toString();
         return result;
     }
 }
