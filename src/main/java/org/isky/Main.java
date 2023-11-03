@@ -119,6 +119,28 @@ public class Main {
                         HSSFCell cell = row.createCell(cellVal);
                         cell.setCellValue(thisVal);
                         cell.setCellStyle(style);
+                        long ysVal = 0;
+                        switch (materials[i]) {
+                            case "0":
+                                ysVal = thisVal * 4;
+                                break;
+                            case "1":
+                                ysVal = thisVal * 5;
+                                break;
+                            case "2":
+                                ysVal = thisVal * 8;
+                                break;
+                            case "3":
+                                ysVal = thisVal;
+                                break;
+                            case "4":
+                                ysVal = thisVal * 2;
+                                break;
+                        }
+                        //印数
+                        HSSFCell ysCell = row.createCell(cellVal + 1);
+                        ysCell.setCellStyle(style);
+                        ysCell.setCellValue(ysVal);
                     }
                 }
 
