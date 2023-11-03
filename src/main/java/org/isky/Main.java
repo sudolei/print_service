@@ -32,7 +32,7 @@ public class Main {
         } catch (ParseException e) {
             throw new RuntimeException(e);
         }
-        String pdfFileFolder = "F:\\qiang" + File.separator + folderDate;
+        String pdfFileFolder = "D:\\世纪开元" + File.separator + folderDate;
         // 获取解析文件夹数据
         Map<String, List<FileInfo>> m = getFileInfo(pdfFileFolder, null);
         List<FileInfo> allList = new ArrayList<>();
@@ -104,70 +104,24 @@ public class Main {
                 HSSFCell firstCell = row.createCell(0);
                 firstCell.setCellValue(material);
                 firstCell.setCellStyle(style);
-
                 for (int j = 1; j <= dataList.size() * 2; j++) {
                     HSSFCell cell = row.createCell(j);
                     cell.setCellValue(0);
                     cell.setCellStyle(style);
                 }
-                int allSum = 0;
-                int cellIndex = 0;
-                for (Map.Entry<String, Long> entry : data.entrySet()) {
-                    String k = entry.getKey();
-                    System.out.println("--------------");
-                    System.out.println(k);
-                    Long v = entry.getValue();
-                    System.out.println(v);
-                    String[] karr = k.split("_");
-                    String pageType = "0";
-                    if (karr.length == 2) {
-                        pageType = karr[1];
-                    }
-                    String fieldValue = String.valueOf(v);
-                    allSum += v;
-                    int cellNum = 0;
-                    int ysCellNum = 0;
-                    long ysVal = 0;
-                    if (cellIndex == 0) {
-                        cellNum = cellIndex + 1;
-                        // 印数
-                        ysCellNum = cellIndex + 2;
-                        ysVal = v * 4;
-                    } else {
-                        int paperType = Integer.parseInt(pageType);
-                        cellNum = (paperType + 1) * 2 - 1;
-                        ysCellNum = (paperType + 1) * 2;
-                        switch (paperType) {
-                            case 0:
-                                ysVal = v * 4;
-                                break;
-                            case 1:
-                                ysVal = v * 5;
-                                break;
-                            case 2:
-                                ysVal = v * 8;
-                                break;
-                            case 3:
-                                ysVal = v;
-                                break;
-                            case 4:
-                                ysVal = v * 2;
-                                break;
-                        }
-                    }
-                    HSSFCell cell = row.createCell(cellNum);
-                    cell.setCellStyle(style);
-                    cell.setCellValue(fieldValue);
 
-                    //印数
-                    HSSFCell ysCell = row.createCell(ysCellNum);
-                    ysCell.setCellStyle(style);
-                    ysCell.setCellValue(ysVal);
-                    cellIndex++;
+                for (int i = 0; i < strArr.length; i++) {
+                    String getKey = material + "_" + materials[i];
+                    System.out.println("getKey: " + getKey);
+                    if (data.containsKey(getKey)) {
+                        Long thisVal = data.get(getKey);
+                        int cellVal = Integer.parseInt(strArr[i]);
+                        HSSFCell cell = row.createCell(cellVal);
+                        cell.setCellValue(thisVal);
+                        cell.setCellStyle(style);
+                    }
                 }
-                HSSFCell endCell = row.createCell(dataList.size() * 2 + 1);
-                endCell.setCellStyle(style);
-                endCell.setCellValue(allSum);
+
                 index++;
             }
 
@@ -320,5 +274,9 @@ public class Main {
 
     private static final String[] headerTitles = {"纸张", "4C+0C", "4C+1C", "4C+4C", "1C+1C", "1C+0", "合计"};
 
+
+    private static final String[] materials = {"0", "1", "2", "3", "4"};
+
+    private static final String[] strArr = {"1", "3", "5", "7", "9",};
 
 }
