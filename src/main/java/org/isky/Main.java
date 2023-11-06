@@ -98,6 +98,7 @@ public class Main {
                 }
             }
             int index = 0;
+
             for (String key : cellMap.keySet()) {
                 row = sheet.createRow(index + 1);
                 String material = cellMap.get(key);
@@ -109,7 +110,7 @@ public class Main {
                     cell.setCellValue(0);
                     cell.setCellStyle(style);
                 }
-
+                int allSum = 0;
                 for (int i = 0; i < strArr.length; i++) {
                     String getKey = material + "_" + materials[i];
                     System.out.println("getKey: " + getKey);
@@ -141,12 +142,17 @@ public class Main {
                         HSSFCell ysCell = row.createCell(cellVal + 1);
                         ysCell.setCellStyle(style);
                         ysCell.setCellValue(ysVal);
+
+                        allSum += thisVal;
                     }
                 }
 
                 index++;
-            }
 
+                HSSFCell endCell = row.createCell(11);
+                endCell.setCellStyle(style);
+                endCell.setCellValue(allSum);
+            }
 
             // 新建一输出文件流
             FileOutputStream out = new FileOutputStream(path + folderDate + ".xls");
