@@ -23,7 +23,8 @@ import java.util.stream.Collectors;
 
 public class Print {
     private static final Logger logger = LoggerFactory.getLogger(Print.class);
-    public static void createXls(Map<String, Long> data, String folderDate) {
+
+    public static void createXls(Map<String, Long> data, List<Map<String, Integer>> fileCounts, String folderDate) {
         String path = "D:\\世纪开元" + File.separator;
         // 纸张材质对应信息
         Map<String, String> cellMap = XlsTools.getXlsCellMap();
@@ -57,11 +58,13 @@ public class Print {
             CellRangeAddress region2 = new CellRangeAddress(0, 0, 5, 6);
             CellRangeAddress region3 = new CellRangeAddress(0, 0, 7, 8);
             CellRangeAddress region4 = new CellRangeAddress(0, 0, 9, 10);
+            CellRangeAddress region5 = new CellRangeAddress(0, 0, 11, 12);
             sheet.addMergedRegion(region);
             sheet.addMergedRegion(region1);
             sheet.addMergedRegion(region2);
             sheet.addMergedRegion(region3);
             sheet.addMergedRegion(region4);
+            sheet.addMergedRegion(region5);
 
             // 填充表头
             for (int i = 0; i < headerTitles.length; i++) {
@@ -89,6 +92,7 @@ public class Print {
                     cell.setCellStyle(style);
                 }
                 int allSum = 0;
+                int allYsSum = 0;
                 for (int i = 0; i < strArr.length; i++) {
                     String getKey = material + "_" + materials[i];
                     System.out.println("getKey: " + getKey);
@@ -122,6 +126,8 @@ public class Print {
                         ysCell.setCellValue(ysVal);
 
                         allSum += thisVal;
+
+                        allYsSum += ysVal;
                     }
                 }
 
@@ -130,6 +136,35 @@ public class Print {
                 HSSFCell endCell = row.createCell(11);
                 endCell.setCellStyle(style);
                 endCell.setCellValue(allSum);
+
+
+                HSSFCell ysEndCell = row.createCell(12);
+                ysEndCell.setCellStyle(style);
+                ysEndCell.setCellValue(allYsSum);
+            }
+
+            HSSFSheet slSheet = wb.createSheet("数量");
+            HSSFRow slRow = slSheet.createRow((int) 0);
+            for (int i = 0; i < slHeaderTitles.length; i++) {
+                HSSFCell keyCell = slRow.createCell(i);
+                keyCell.setCellValue(slHeaderTitles[i]);
+                keyCell.setCellStyle(headStyle);
+            }
+
+            int rowCount = 1;
+            for (Map<String, Integer> map : fileCounts) {
+                for (Map.Entry<String, Integer> entry : map.entrySet()) {
+                    slRow = slSheet.createRow(rowCount);
+                    System.out.println(entry.getKey() + "," + entry.getValue());
+                    HSSFCell keyCell = slRow.createCell(0);
+                    keyCell.setCellValue(entry.getKey());
+                    keyCell.setCellStyle(style);
+
+                    HSSFCell valCell = slRow.createCell(1);
+                    valCell.setCellValue(entry.getValue());
+                    valCell.setCellStyle(style);
+                    rowCount++;
+                }
             }
 
             // 新建一输出文件流
@@ -280,7 +315,7 @@ public class Print {
 
     private static final String[] headerTitles = {"纸张", "4C+0C", "4C+1C", "4C+4C", "1C+1C", "1C+0", "合计"};
 
-
+    private static final String[] slHeaderTitles = {"路径", "文件数量"};
     private static final String[] materials = {"0", "1", "2", "3", "4"};
 
     private static final String[] strArr = {"1", "3", "5", "7", "9",};

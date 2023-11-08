@@ -28,6 +28,4 @@ public class Main {
         Timer timer = new Timer();
         timer.schedule(new MyTask(), 1000, 1000);
     }
-
-
 }

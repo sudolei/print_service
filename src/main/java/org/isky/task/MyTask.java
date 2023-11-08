@@ -3,6 +3,7 @@ package org.isky.task;
 import org.isky.Print;
 import org.isky.domain.FileInfo;
 import org.isky.util.DateUtils;
+import org.isky.util.FileUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +23,7 @@ public class MyTask extends TimerTask {
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
         String runTime = sdf.format(new Date());
         logger.warn(runTime);
-        if (runTime.equals("10:10:00")) {
+        if (runTime.equals("11:34:00")) {
             logger.warn("开始执行");
             SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
             String folderDate = null;
@@ -40,8 +41,10 @@ public class MyTask extends TimerTask {
             }
             // 获取分析后的数据
             Map<String, Long> data = Print.getData(allList);
+            // 获取文件夹文件数量
+            List<Map<String,Integer>> fileCounts = FileUtil.folderFiles(pdfFileFolder);
             //生成EXCEL
-            Print.createXls(data, folderDate);
+            Print.createXls(data,fileCounts, folderDate);
         }
 
     }
